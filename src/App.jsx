@@ -243,17 +243,6 @@ function App() {
     toggleCameraFacingMode()
   }
 
-  const cycleSpeechLanguage = () => {
-    const currentIndex = speechLanguageOptions.findIndex((option) => option.code === speechLanguage)
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % speechLanguageOptions.length
-    setSpeechLanguage(speechLanguageOptions[nextIndex].code)
-  }
-
-  const getSpeechLanguageLabel = () => {
-    const option = speechLanguageOptions.find((item) => item.code === speechLanguage)
-    return option ? option.label : speechLanguage
-  }
-
   const stopCamera = () => {
     const video = videoRef.current
     if (streamRef.current) {
@@ -328,9 +317,21 @@ function App() {
           {getPrimaryLabel()}
         </button>
 
-        <button className="secondary-btn" onClick={cycleSpeechLanguage}>
-          Language: {getSpeechLanguageLabel()}
-        </button>
+        <label className="language-select-wrap" htmlFor="language-select">
+          Language
+          <select
+            id="language-select"
+            className="language-select"
+            value={speechLanguage}
+            onChange={(event) => setSpeechLanguage(event.target.value)}
+          >
+            {speechLanguageOptions.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="response-block">
           <p className="response-label">Tutor response</p>
