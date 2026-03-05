@@ -19,6 +19,7 @@ function App() {
   const keepMicOnRef = useRef(false)
   const cameraActiveRef = useRef(false)
   const lastSpokenResponseRef = useRef('')
+  const imageOnlyRequestPendingRef = useRef(false)
   const socketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
   const socketHost = window.location.host
   const socketUrl = `${socketProtocol}://${socketHost}/ws`
@@ -53,6 +54,48 @@ function App() {
       .replace(/\n{2,}/g, '. ')
       .replace(/\s+/g, ' ')
       .trim()
+  }
+
+  const getSelectedLanguageLabel = () => {
+    const selectedLanguage = speechLanguageOptions.find((option) => option.code === speechLanguage)
+    return selectedLanguage?.label || 'English'
+  }
+
+  const buildTutorPrompt = (requestText, options = {}) => {
+    const { imageOnly = false } = options
+    const targetLanguage = getSelectedLanguageLabel()
+
+    if (imageOnly) {
+      return [
+        `Respond only in ${targetLanguage}.`,
+        'Identify the main object in this image and answer briefly in one sentence.',
+      ].join(' ')
+    }
+
+    return [`Respond only in ${targetLanguage}.`, requestText].join(' ')
+  }
+
+  const stripLanguageImprovement = (messageText) => {
+    const normalized = messageText.replace(/\r/g, '').trim()
+
+    const withoutTutorLabel = normalized.replace(/^\s*Tutor response\s*/i, '').trim()
+
+    const withoutImprovement = withoutTutorLabel
+      .replace(/(?:^|\n)\s*[-*_]{3,}\s*\n\s*(?:\*\*|#{1,6}\s*)?Language Improvement\*\*?[\s\S]*$/i, '')
+      .replace(/(?:^|\n)\s*(?:\*\*|#{1,6}\s*)?Language Improvement\*\*?[\s\S]*$/i, '')
+      .replace(/\n\s*[-*_]{3,}\s*$/g, '')
+      .trim()
+
+    const paragraphs = withoutImprovement
+      .split(/\n\s*\n/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean)
+
+    const firstParagraph = paragraphs[0] || withoutImprovement
+    const firstSentenceMatch = firstParagraph.match(/.+?[.!?](?=\s|$)/)
+    const summary = (firstSentenceMatch ? firstSentenceMatch[0] : firstParagraph).trim()
+
+    return summary || withoutImprovement || messageText
   }
 
   const isVisualIntentPrompt = (messageText) => {
@@ -162,8 +205,13 @@ function App() {
     ws.onmessage = (event) => {
       const data = String(event.data)
       const parsedResponse = parseSocketResponse(data)
-      setResponse(parsedResponse)
-      setBackendMode(detectBackendMode(parsedResponse))
+      const finalResponse = imageOnlyRequestPendingRef.current
+        ? stripLanguageImprovement(parsedResponse)
+        : parsedResponse
+
+      imageOnlyRequestPendingRef.current = false
+      setResponse(finalResponse)
+      setBackendMode(detectBackendMode(finalResponse))
     }
 
     return () => {
@@ -193,7 +241,10 @@ function App() {
     ws.send(payload)
   }
 
-  const sendTutorRequest = (requestText) => {
+  const sendTutorRequest = (requestText, options = {}) => {
+    const { imageOnly = false } = options
+    imageOnlyRequestPendingRef.current = imageOnly
+
     if (!requestText.trim()) {
       setResponse('Please type something first.')
       setImageDebug('Image idle (tap to send)')
@@ -202,6 +253,7 @@ function App() {
 
     const needsImage = isVisualIntentPrompt(requestText)
     const hasLiveCamera = cameraActiveRef.current && Boolean(streamRef.current)
+    const promptText = buildTutorPrompt(requestText, { imageOnly })
 
     if (needsImage && !hasLiveCamera) {
       setImageDebug('Image required (camera off)')
@@ -211,7 +263,7 @@ function App() {
 
     if (!hasLiveCamera) {
       setImageDebug('Image not sent (camera off)')
-      sendToSocket(requestText)
+      sendToSocket(promptText)
       return
     }
 
@@ -229,7 +281,7 @@ function App() {
       type: 'tutor.multimodal',
       requestId: null,
       payload: {
-        text: requestText,
+        text: promptText,
         mimeType: frame.mimeType,
         imageBase64: frame.imageBase64,
       },
@@ -248,7 +300,7 @@ function App() {
       return
     }
 
-    sendTutorRequest('Please identify the main object in this image and answer briefly.')
+    sendTutorRequest('Please identify the main object in this image and answer briefly.', { imageOnly: true })
   }
 
   const sendMessage = () => {
