@@ -10,7 +10,7 @@ function App() {
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraFacingMode, setCameraFacingMode] = useState('user')
   const [speechLanguage, setSpeechLanguage] = useState('en-US')
-  const [imageDebug, setImageDebug] = useState('Image idle')
+  const [imageDebug, setImageDebug] = useState('Image idle (tap to send)')
 
   const wsRef = useRef(null)
   const videoRef = useRef(null)
@@ -196,7 +196,7 @@ function App() {
   const sendTutorRequest = (requestText) => {
     if (!requestText.trim()) {
       setResponse('Please type something first.')
-      setImageDebug('Image idle')
+      setImageDebug('Image idle (tap to send)')
       return
     }
 
@@ -238,6 +238,17 @@ function App() {
 
     setImageDebug(`Image sent: ${approximateKilobytes} KB`)
     sendToSocket(JSON.stringify(request))
+  }
+
+  const sendImageOnlyRequest = () => {
+    const hasLiveCamera = cameraActiveRef.current && Boolean(streamRef.current)
+    if (!hasLiveCamera) {
+      setImageDebug('Image required (camera off)')
+      setResponse('Turn on camera, then tap the image badge again to send a snapshot.')
+      return
+    }
+
+    sendTutorRequest('Please identify the main object in this image and answer briefly.')
   }
 
   const sendMessage = () => {
@@ -355,6 +366,7 @@ function App() {
         video.muted = true
         video.play().catch(() => {})
         setCameraActive(true)
+        setImageDebug('Image ready (tap to send)')
       })
       .catch((error) => {
         if (error.name === 'NotAllowedError') {
@@ -399,6 +411,7 @@ function App() {
       video.srcObject = null
     }
     setCameraActive(false)
+    setImageDebug('Image idle (tap to send)')
   }
 
   const handlePrimaryAction = () => {
@@ -447,7 +460,16 @@ function App() {
           <span className="badge">{socketUrl}</span>
           <span className="badge">Mic {micActive ? 'on' : 'off'}</span>
           <span className="badge">Cam {cameraActive ? 'on' : 'off'}</span>
-          <span className="badge">{imageDebug}</span>
+          <button
+            type="button"
+            className="badge badge-button"
+            onClick={(event) => {
+              event.stopPropagation()
+              sendImageOnlyRequest()
+            }}
+          >
+            {imageDebug}
+          </button>
         </div>
       </main>
 

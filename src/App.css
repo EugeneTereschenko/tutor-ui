@@ -75,6 +75,17 @@
   color: rgba(255, 255, 255, 0.98);
 }
 
+.badge-button {
+  cursor: pointer;
+  appearance: none;
+  font: inherit;
+}
+
+.badge-button:focus-visible {
+  outline: 2px solid rgba(140, 170, 255, 0.95);
+  outline-offset: 2px;
+}
+
 .control-sheet {
   margin-top: 10px;
   padding: 14px 12px 16px;
