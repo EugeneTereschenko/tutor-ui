@@ -20,9 +20,28 @@ function App() {
   const cameraActiveRef = useRef(false)
   const lastSpokenResponseRef = useRef('')
   const imageOnlyRequestPendingRef = useRef(false)
-  const socketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const socketHost = window.location.host
-  const socketUrl = `${socketProtocol}://${socketHost}/ws`
+  const configuredWsUrl = (import.meta.env.VITE_WS_URL || '').trim()
+  const configuredBackendUrl = (import.meta.env.VITE_BACKEND_URL || '').trim()
+
+  const normalizeSocketUrl = () => {
+    if (configuredWsUrl) {
+      return configuredWsUrl.replace(/\/$/, '')
+    }
+
+    if (configuredBackendUrl) {
+      const normalizedBackendUrl = configuredBackendUrl.replace(/\/$/, '')
+      const websocketBase = normalizedBackendUrl
+        .replace(/^https:\/\//i, 'wss://')
+        .replace(/^http:\/\//i, 'ws://')
+      return `${websocketBase}/ws`
+    }
+
+    const socketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const socketHost = window.location.host
+    return `${socketProtocol}://${socketHost}/ws`
+  }
+
+  const socketUrl = normalizeSocketUrl()
   const speechLanguageOptions = [
     { code: 'en-US', label: 'English' },
     { code: 'uk-UA', label: 'Ukrainian' },
