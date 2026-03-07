@@ -518,7 +518,6 @@ function App() {
       <header className="call-header">
         <div>
           <p className="eyebrow">Gemini Live Tutor</p>
-          <h2 className="title">Video Call Interface</h2>
         </div>
         <span className="mode-pill">{backendMode}</span>
       </header>
