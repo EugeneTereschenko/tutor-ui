@@ -555,6 +555,11 @@ function App() {
           {getPrimaryLabel()}
         </button>
 
+        <div className="response-block">
+          <p className="response-label">Tutor response</p>
+          <p className="response">{response || 'Your AI response will appear here.'}</p>
+        </div>
+
         <label className="language-select-wrap" htmlFor="language-select">
           Language
           <select
@@ -570,11 +575,6 @@ function App() {
             ))}
           </select>
         </label>
-
-        <div className="response-block">
-          <p className="response-label">Tutor response</p>
-          <p className="response">{response || 'Your AI response will appear here.'}</p>
-        </div>
       </section>
     </div>
   )
