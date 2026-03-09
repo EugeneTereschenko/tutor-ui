@@ -8,7 +8,7 @@ function App() {
   const [backendMode, setBackendMode] = useState('Detecting...')
   const [micActive, setMicActive] = useState(false)
   const [cameraActive, setCameraActive] = useState(false)
-  const [cameraFacingMode, setCameraFacingMode] = useState('user')
+  const [cameraFacingMode, setCameraFacingMode] = useState('environment')
   const [speechLanguage, setSpeechLanguage] = useState('en-US')
   const [imageDebug, setImageDebug] = useState('Image idle (tap to send)')
 
