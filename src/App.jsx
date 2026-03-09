@@ -527,7 +527,6 @@ function App() {
 
         <div className="call-overlay">
           <span className="badge">{status}</span>
-          <span className="badge">{socketUrl}</span>
           <span className="badge">Mic {micActive ? 'on' : 'off'}</span>
           <span className="badge">Cam {cameraActive ? 'on' : 'off'}</span>
           <button
