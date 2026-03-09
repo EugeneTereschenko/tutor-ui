@@ -54,14 +54,26 @@ function App() {
     try {
       const parsed = JSON.parse(rawMessage)
       if (parsed?.type === 'tutor.response' && typeof parsed?.payload?.text === 'string') {
-        return parsed.payload.text
+        return {
+          text: parsed.payload.text,
+          isTutorMessage: true,
+        }
       }
       if (parsed?.type === 'tutor.error' && typeof parsed?.payload?.message === 'string') {
-        return parsed.payload.message
+        return {
+          text: parsed.payload.message,
+          isTutorMessage: true,
+        }
       }
-      return rawMessage
+      return {
+        text: rawMessage,
+        isTutorMessage: false,
+      }
     } catch {
-      return rawMessage
+      return {
+        text: rawMessage,
+        isTutorMessage: true,
+      }
     }
   }
 
@@ -97,24 +109,20 @@ function App() {
   const stripLanguageImprovement = (messageText) => {
     const normalized = messageText.replace(/\r/g, '').trim()
 
-    const withoutTutorLabel = normalized.replace(/^\s*Tutor response\s*/i, '').trim()
+    const withoutTutorLabel = normalized.replace(/^\s*Tutor response\s*:?\s*/i, '').trim()
 
-    const withoutImprovement = withoutTutorLabel
-      .replace(/(?:^|\n)\s*[-*_]{3,}\s*\n\s*(?:\*\*|#{1,6}\s*)?Language Improvement\*\*?[\s\S]*$/i, '')
-      .replace(/(?:^|\n)\s*(?:\*\*|#{1,6}\s*)?Language Improvement\*\*?[\s\S]*$/i, '')
-      .replace(/\n\s*[-*_]{3,}\s*$/g, '')
-      .trim()
-
-    const paragraphs = withoutImprovement
-      .split(/\n\s*\n/)
-      .map((paragraph) => paragraph.trim())
+    const candidateLines = withoutTutorLabel
+      .split('\n')
+      .map((line) => line.trim())
       .filter(Boolean)
+      .filter((line) => !/^[-*_]{3,}$/.test(line))
+      .filter((line) => !/^(#{1,6}\s*)?(\*\*)?language improvement/i.test(line))
 
-    const firstParagraph = paragraphs[0] || withoutImprovement
-    const firstSentenceMatch = firstParagraph.match(/.+?[.!?](?=\s|$)/)
-    const summary = (firstSentenceMatch ? firstSentenceMatch[0] : firstParagraph).trim()
+    const firstContent = candidateLines[0] || withoutTutorLabel
+    const plainFirstContent = firstContent.replace(/\*\*(.*?)\*\*/g, '$1').trim()
+    const firstSentenceMatch = plainFirstContent.match(/.+?[.!?](?=\s|$)/)
 
-    return summary || withoutImprovement || messageText
+    return (firstSentenceMatch ? firstSentenceMatch[0] : plainFirstContent || messageText).trim()
   }
 
   const isVisualIntentPrompt = (messageText) => {
@@ -223,12 +231,15 @@ function App() {
 
     ws.onmessage = (event) => {
       const data = String(event.data)
-      const parsedResponse = parseSocketResponse(data)
+      const parsedMessage = parseSocketResponse(data)
+      const parsedResponse = parsedMessage.text
       const finalResponse = imageOnlyRequestPendingRef.current
         ? stripLanguageImprovement(parsedResponse)
         : parsedResponse
 
-      imageOnlyRequestPendingRef.current = false
+      if (imageOnlyRequestPendingRef.current && parsedMessage.isTutorMessage) {
+        imageOnlyRequestPendingRef.current = false
+      }
       setResponse(finalResponse)
       setBackendMode(detectBackendMode(finalResponse))
     }
